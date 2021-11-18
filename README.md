@@ -1,5 +1,5 @@
 ### Retirement Spending Simulation
-Fortran simulation of spending rules in retirement, motivated by a Morningstar [study](https://www.morningstar.com/lp/the-state-of-retirement-income), 
+Simulation in Fortran of spending rules in retirement, motivated by a Morningstar [study](https://www.morningstar.com/lp/the-state-of-retirement-income), 
 discussed in an article [The 4% Retirement Rule Is in Doubt](https://www.wsj.com/articles/the-4-retirement-rule-is-in-doubt-will-your-nest-egg-last-11636713035). 
 Suppose that
 

@@ -1,6 +1,5 @@
 ### Retirement Spending Simulation
-Simulation in Fortran 2003 of spending rules in retirement, motivated by a Morningstar [study](https://www.morningstar.com/lp/the-state-of-retirement-income), 
-discussed in a Wall Street Journal article [The 4% Retirement Rule Is in Doubt](https://www.wsj.com/articles/the-4-retirement-rule-is-in-doubt-will-your-nest-egg-last-11636713035). Suppose that
+Simulation in Fortran 2003 of spending and asset allocation rules in retirement, motivated by a Morningstar [study](https://www.morningstar.com/lp/the-state-of-retirement-income), discussed in a Wall Street Journal article [The 4% Retirement Rule Is in Doubt](https://www.wsj.com/articles/the-4-retirement-rule-is-in-doubt-will-your-nest-egg-last-11636713035). Suppose that
 
 (1) A retiree will withdraw annually the same amount from savings, adjusted for inflation, as long as she lives.
 

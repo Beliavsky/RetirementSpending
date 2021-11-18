@@ -1,5 +1,14 @@
 ### Retirement Spending Simulation
-Fortran simulation of spending rules in retirement
+Fortran simulation of spending rules in retirement. Suppose that
+
+(1) A retiree will withdraw annually the same amount from savings, adjusted for inflation, as long as he lives
+
+(2) Annual after-inflation stock market returns are normally distributed with known mean and standard deviation.
+
+(3) The investor rebalances to have a constant fraction of savings in stocks.
+
+Then the two decisions for the investor to make are how much to spend annually and what fraction of savings to keep in stocks.
+The program simulates the probability of savings lasting N years given the spending rule and stock market allocation.
 
 Compile with ```gfortran -std=f2003 kind.f90 stats.f90 ziggurat.f90 xruin.f90```
 

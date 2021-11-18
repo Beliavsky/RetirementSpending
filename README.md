@@ -5,7 +5,7 @@ Simulation in Fortran 2003 of spending and asset allocation rules in retirement,
 
 (2) Annual after-inflation stock market returns are normally distributed with known mean and standard deviation.
 
-(3) The investor rebalances to have a constant fraction of savings in stocks.
+(3) The investor rebalances annually to have a constant fraction of savings in stocks.
 
 Then the two decisions for the investor to make are how much to spend annually and what fraction of savings to keep in stocks.
 The program simulates the probability of savings lasting N years given the spending rule and stock market allocation. 

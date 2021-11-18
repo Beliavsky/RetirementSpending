@@ -37,6 +37,6 @@ Output:
  
  Row 6 of the table above means that if the investor spends 3% of the initial portfolio value, adjusted for inflation, and 
  invests the 100% of savings in the stock market, which has average after-inflation returns of 6% with standard deviation of 15%,
- that the probability of the savings lasting 30 years is 94.7%. If the annual spending rate is 4%, the 30-year survival probability
+ that the probability of the savings lasting 30 years (column `p30`) is 94.7%. If the annual spending rate is 4%, the 30-year survival probability
  falls to 83.6%. The investor should decide whether spending 33% more per year is worth a higher risk of running out of money. Using
  different return assumptions, Morningstar recommends 3.3% as a safe withdrawal rate.

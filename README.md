@@ -108,3 +108,4 @@ mean terminal wealth : 77.24
 p(wealth=0 at end)  : .876570
 p(ruin by year n)   : .876570
 ```
+The Bellman dynamic programming approach yields higher utility than the adaptive annuity one, which outperforms the constant spending rule.

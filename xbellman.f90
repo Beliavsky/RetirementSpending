@@ -7,7 +7,10 @@ implicit none
 !   1) fixed annual dollar withdrawal (optimize w by grid search)
 !   2) adaptive annuity withdrawal (recomputed each year from current wealth)
 !   3) bellman dp spending rule (method b): reuse k simulated shocks per year to
-!      approximate e[v_{t+1}(w_next)] inside the bellman equation, on a wealth grid.
+!      approximate e[v_{t+1}(w_next)] inside the bellman equation, on a wealth grid
+!
+! modification:
+!   all rules liquidate remaining wealth in the last year (withdraw = wealth when t == n_years)
 
 integer, parameter :: n_years = 30        ! planning horizon in years (number of annual withdrawals/consumption periods)
 integer, parameter :: n_paths = 100000    ! number of monte carlo simulated return paths used to estimate expected utility
@@ -22,12 +25,12 @@ real(kind=dp), parameter :: mu = 0.06_dp          ! mean annual arithmetic retur
 real(kind=dp), parameter :: sigma = 0.15_dp       ! annual standard deviation of arithmetic return of the portfolio (sd[r])
 
 ! bellman dp settings (m=200, a=50, k=500)
-integer, parameter :: n_dp_wealth_grid = 200          ! number of wealth grid points (state grid size m)
-integer, parameter :: n_dp_withdraw_grid = 50         ! number of withdrawal choices per wealth (action grid size a)
-integer, parameter :: n_dp_shocks = 500               ! number of return shocks used for dp expectations (k)
-real(kind=dp), parameter :: dp_wealth_max = 4.0_dp*w0 ! max wealth represented on dp grid (values above are capped)
+integer, parameter :: n_dp_wealth_grid   = 200          ! number of wealth grid points (state grid size m)
+integer, parameter :: n_dp_withdraw_grid = 50           ! number of withdrawal choices per wealth (action grid size a)
+integer, parameter :: n_dp_shocks        = 500          ! number of return shocks used for dp expectations (k)
+real(kind=dp), parameter :: dp_wealth_max = 4.0_dp*w0   ! max wealth represented on dp grid (values above are capped)
 
-real(kind=dp), allocatable :: gross(:,:)
+real(kind=dp), allocatable :: gross(:,:)               ! gross(t,i) = 1 + r, clipped at 0
 
 real(kind=dp) :: w_best, u_best
 real(kind=dp) :: w_lo, w_hi, step
@@ -35,14 +38,14 @@ integer :: iseed
 
 character(len=64) :: arg1
 
-! store coarse-grid results only
+! store coarse-grid results only (for fixed-dollar w grid)
 real(kind=dp), allocatable :: w_coarse(:), eu_coarse(:), mean_wt_coarse(:), p_end0_coarse(:)
 
 ! adaptive annuity rule evaluation
 real(kind=dp) :: eu_annuity, mean_wt_annuity, p_end0_annuity, p_ever0_annuity
 
 ! dp policy and dp evaluation
-real(kind=dp), allocatable :: withdraw_dp(:,:)  ! (n_dp_wealth_grid, n_years)
+real(kind=dp), allocatable :: withdraw_dp(:,:)         ! (n_dp_wealth_grid, n_years)
 real(kind=dp) :: eu_dp, mean_wt_dp, p_end0_dp, p_ever0_dp
 
 if (pension <= 0.0_dp) then
@@ -56,51 +59,50 @@ allocate(withdraw_dp(n_dp_wealth_grid, n_years))
 
 iseed = 0
 call random_seed_init(iseed, nburn=1000)
-call draw_returns(gross)
+call draw_returns( &
+   gross) ! g: gross return matrix g(t,i)
 
 w_lo = 0.0_dp
 w_hi = 0.15_dp * w0
 
 call grid_search( &
-   w_lo, &        ! a: lower bound for w grid
-   w_hi, &        ! b: upper bound for w grid
-   ngrid1, &      ! ngrid: number of grid points
-   w_best, &      ! w_best: output best w
-   u_best, &      ! u_best: output best expected utility
+   w_lo, &               ! a: lower bound of withdrawal grid
+   w_hi, &               ! b: upper bound of withdrawal grid
+   ngrid1, &             ! ngrid: number of grid points
+   w_best, &             ! w_best: output best w
+   u_best, &             ! u_best: output best expected utility
    print_all=.false., &  ! print_all: print per-candidate blocks
    store_coarse=.true.)  ! store_coarse: store table rows for coarse grid only
 
 step = (w_hi - w_lo) / real(ngrid1 - 1, kind=dp)
 call refine_search( &
-   w_best, &      ! w0_guess: initial guess for w
-   step, &        ! step0: initial coarse step size
-   ngrid2, &      ! ngrid: number of grid points in each refinement
-   nrefine, &     ! niter: number of refinement iterations
-   w_best, &      ! w_best: output refined best w
-   u_best, &      ! u_best: output refined best expected utility
+   w_best, &          ! w0_guess: starting guess for best w
+   step, &            ! step0: initial step size around w0_guess
+   ngrid2, &          ! ngrid: number of grid points in each refinement
+   nrefine, &         ! niter: number of refinement iterations
+   w_best, &          ! w_best: output refined best w
+   u_best, &          ! u_best: output refined best expected utility
    print_all=.false.) ! print_all: print refinement diagnostics
 
-! evaluate adaptive annuity rule
 call eval_rule_annuity( &
-   eu_annuity, &       ! eu: expected utility under annuity rule
-   mean_wt_annuity, &  ! mean_wt: mean terminal wealth under annuity rule
-   p_end0_annuity, &   ! p_end0: prob(wealth=0 at end) under annuity rule
-   p_ever0_annuity)    ! p_ever0: prob(ruin ever) under annuity rule
+   eu_annuity, &       ! eu: expected sum of log consumption
+   mean_wt_annuity, &  ! mean_wt: mean terminal wealth
+   p_end0_annuity, &   ! p_end0: prob(terminal wealth = 0)
+   p_ever0_annuity)    ! p_ever0: prob(wealth hits 0 at any time)
 
-! bellman dp: solve for adaptive withdrawal policy and evaluate it
 call solve_bellman_dp( &
    withdraw_dp) ! withdraw_policy: dp policy table (wealth grid x time)
 
 call eval_policy_dp( &
    withdraw_dp, &  ! withdraw_policy: dp policy table (wealth grid x time)
-   eu_dp, &        ! eu: expected utility under dp policy
-   mean_wt_dp, &   ! mean_wt: mean terminal wealth under dp policy
-   p_end0_dp, &    ! p_end0: prob(wealth=0 at end) under dp policy
-   p_ever0_dp)     ! p_ever0: prob(ruin ever) under dp policy
+   eu_dp, &        ! eu: expected sum of log consumption
+   mean_wt_dp, &   ! mean_wt: mean terminal wealth
+   p_end0_dp, &    ! p_end0: prob(terminal wealth = 0)
+   p_ever0_dp)     ! p_ever0: prob(wealth hits 0 at any time)
 
 call print_inputs()
 call print_opt_block( &
-   w_best, &  ! w: optimal fixed-dollar withdrawal
+   w_best, &  ! w: optimal fixed-dollar withdrawal (years 1..n_years-1)
    u_best)    ! eu0: expected utility (objective) from the optimizer
 
 call print_rule_block( &
@@ -155,12 +157,12 @@ end do
 end subroutine draw_returns
 
 subroutine eval_w( &
-   w, &        ! w: constant annual withdrawal (dollars)
+   w, &        ! w: constant annual withdrawal (dollars) for years 1..n_years-1
    eu, &       ! eu: expected sum of log consumption
    mean_wt, &  ! mean_wt: mean terminal wealth
    p_end0, &   ! p_end0: prob(terminal wealth = 0)
    p_ever0)    ! p_ever0: prob(wealth hits 0 at any time)
-! simulate the fixed-dollar withdrawal rule for a given w
+! simulate the fixed-dollar withdrawal rule for a given w, with last-year liquidation
 real(kind=dp), intent(in)  :: w
 real(kind=dp), intent(out) :: eu, mean_wt, p_end0, p_ever0
 
@@ -181,7 +183,12 @@ do i=1, n_paths
    u_path = 0.0_dp
 
    do t=1, n_years
-      withdraw = min(w, wealth)
+      if (t == n_years) then
+         withdraw = wealth
+      else
+         withdraw = min(w, wealth)
+      end if
+
       cons = pension + withdraw
       u_path = u_path + log(cons)
 
@@ -210,7 +217,7 @@ subroutine eval_rule_annuity( &
    mean_wt, &  ! mean_wt: mean terminal wealth
    p_end0, &   ! p_end0: prob(terminal wealth = 0)
    p_ever0)    ! p_ever0: prob(wealth hits 0 at any time)
-! simulate the adaptive annuity withdrawal rule (recomputed each year)
+! simulate the adaptive annuity withdrawal rule (recomputed each year), with last-year liquidation
 real(kind=dp), intent(out) :: eu, mean_wt, p_end0, p_ever0
 
 integer :: i, t, rem
@@ -230,10 +237,15 @@ do i=1, n_paths
    u_path = 0.0_dp
 
    do t=1, n_years
-      rem = n_years - t + 1
-      withdraw = withdraw_annuity( &
-         wealth, & ! wealth: current wealth before withdrawal
-         rem)      ! rem: years remaining including this year
+      if (t == n_years) then
+         withdraw = wealth
+      else
+         rem = n_years - t + 1
+         withdraw = withdraw_annuity( &
+            wealth, & ! wealth: current wealth before withdrawal
+            rem)      ! rem: years remaining including this year
+      end if
+
       cons = pension + withdraw
       u_path = u_path + log(cons)
 
@@ -303,7 +315,7 @@ end function withdraw_annuity
 
 subroutine solve_bellman_dp( &
    withdraw_policy) ! withdraw_policy: dp policy table (wealth grid x time)
-! solve bellman equation on a wealth grid and store the optimal withdrawal policy
+! solve bellman equation on a wealth grid and store the optimal withdrawal policy, with last-year liquidation
 real(kind=dp), intent(out) :: withdraw_policy(:,:)  ! (n_dp_wealth_grid, n_years)
 
 integer :: t, iw, ia, k
@@ -322,6 +334,17 @@ dw = dp_wealth_max / real(n_dp_wealth_grid - 1, kind=dp)
 v_next = 0.0_dp
 
 do t=n_years, 1, -1
+
+   if (t == n_years) then
+      do iw=1, n_dp_wealth_grid
+         wealth = dw * real(iw-1, kind=dp)
+         v_cur(iw) = log(pension + wealth)
+         withdraw_policy(iw,t) = wealth
+      end do
+      v_next = v_cur
+      cycle
+   end if
+
    do iw=1, n_dp_wealth_grid
       wealth = dw * real(iw-1, kind=dp)
 
@@ -368,7 +391,7 @@ subroutine eval_policy_dp( &
    mean_wt, &         ! mean_wt: mean terminal wealth
    p_end0, &          ! p_end0: prob(terminal wealth = 0)
    p_ever0)           ! p_ever0: prob(wealth hits 0 at any time)
-! simulate the dp policy (interpolated in wealth) on monte carlo paths
+! simulate the dp policy (interpolated in wealth) on monte carlo paths, with last-year liquidation
 real(kind=dp), intent(in)  :: withdraw_policy(:,:) ! (n_dp_wealth_grid, n_years)
 real(kind=dp), intent(out) :: eu, mean_wt, p_end0, p_ever0
 
@@ -391,11 +414,15 @@ do i=1, n_paths
    u_path = 0.0_dp
 
    do t=1, n_years
-      withdraw = interp_policy( &
-         withdraw_policy(:,t), & ! p: withdrawal policy values on wealth grid for year t
-         wealth, &              ! wealth: current wealth
-         dw)                    ! dx: wealth grid spacing
-      if (withdraw > wealth) withdraw = wealth
+      if (t == n_years) then
+         withdraw = wealth
+      else
+         withdraw = interp_policy( &
+            withdraw_policy(:,t), & ! p: withdrawal policy values on wealth grid for year t
+            wealth, &              ! wealth: current wealth
+            dw)                    ! dx: wealth grid spacing
+         if (withdraw > wealth) withdraw = wealth
+      end if
 
       cons = pension + withdraw
       u_path = u_path + log(cons)
@@ -475,14 +502,14 @@ if (a > wealth) a = wealth
 end function interp_policy
 
 subroutine print_opt_block( &
-   w, &   ! w: optimal fixed-dollar withdrawal
+   w, &   ! w: optimal fixed-dollar withdrawal (years 1..n_years-1)
    eu0)   ! eu0: expected utility at that w (from optimizer)
 ! print the summary block for the optimized fixed-dollar withdrawal rule
 real(kind=dp), intent(in) :: w, eu0
 real(kind=dp) :: eu, mean_wt, p_end0, p_ever0
 
 call eval_w( &
-   w, &       ! w: constant annual withdrawal
+   w, &       ! w: constant annual withdrawal for years 1..n_years-1
    eu, &      ! eu: expected utility (recomputed here)
    mean_wt, & ! mean_wt: mean terminal wealth
    p_end0, &  ! p_end0: prob(wealth=0 at end)
@@ -550,11 +577,11 @@ do j=1, ngrid
    w = a + (b-a) * real(j-1, kind=dp) / real(ngrid-1, kind=dp)
 
    call eval_w( &
-      w, &      ! w: constant annual withdrawal
-      eu, &     ! eu: expected utility
-      mean_wt, &! mean_wt: mean terminal wealth
-      p_end0, & ! p_end0: prob(wealth=0 at end)
-      p_ever0)  ! p_ever0: prob(ruin ever)
+      w, &       ! w: constant annual withdrawal
+      eu, &      ! eu: expected utility
+      mean_wt, & ! mean_wt: mean terminal wealth
+      p_end0, &  ! p_end0: prob(wealth=0 at end)
+      p_ever0)   ! p_ever0: prob(ruin ever)
 
    if (store_coarse) then
       w_coarse(j) = w
@@ -605,13 +632,13 @@ do k=1, niter
    end if
 
    call grid_search( &
-      a, &           ! a: lower bound for local grid
-      b, &           ! b: upper bound for local grid
-      ngrid, &       ! ngrid: number of grid points
-      wb, &          ! w_best: best w found in this refinement
-      ub, &          ! u_best: best utility found in this refinement
-      print_all, &   ! print_all: pass through
-      store_coarse=.false.) ! store_coarse: do not store refinement rows
+      a, &                 ! a: lower bound for local grid
+      b, &                 ! b: upper bound for local grid
+      ngrid, &             ! ngrid: number of grid points
+      wb, &                ! w_best: best w found in this refinement
+      ub, &                ! u_best: best utility found in this refinement
+      print_all, &         ! print_all: pass through
+      store_coarse=.false.)! store_coarse: do not store refinement rows
 
    w_guess = wb
    step = (b-a) / real(ngrid-1, kind=dp)

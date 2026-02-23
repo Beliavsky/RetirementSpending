@@ -40,6 +40,7 @@ Output:
  falls to 83.6%. The investor should decide whether spending 33% more per year is worth a higher risk of running out of money. Using
  different return assumptions, Morningstar recommends 3.3% as a safe withdrawal rate.
 
+## Constant spending rule that maximizes utility
 A second program, compiled with `gfortran kind.f90 constants.f90 random.f90 xspending_utility.f90`, looks at the optimal spending rate to maximize utility given a pension and log utility from consumption. Results are
 ```
 n_years  : 30
@@ -76,3 +77,34 @@ w/w0        eu            mean_terminal_wealth     p(wealth=0 at end)
 ```
 To maximize utility a spending rate of 6.17% of initial wealth is recommended.
 
+## Spending rule using the Bellman equation
+Compiling with `gfortran kind.f90 constants.f90 random.f90 xbellman.f90` and running gives
+
+```
+n_years  : 30
+n_paths  : 100000
+w0       : 1000000.00
+pension  : 10000.00
+mu       : .060000
+sigma    : .150000
+dp grid  : wealth=200, withdraw=50, shocks=500
+dp wmax  : 4000000.00
+w_opt    : 54400.00
+w_opt/w0 : .054400
+eu_opt   : 325.734129
+mean terminal wealth : 1479694.55
+p(wealth=0 at end)  : .394990
+p(ruin by year n)   : .394990
+ ---
+rule      : adaptive_annuity
+eu        : 334.920566
+mean terminal wealth : .00
+p(wealth=0 at end)  : 1.000000
+p(ruin by year n)   : 1.000000
+ ---
+rule      : bellman_dp
+eu        : 338.137521
+mean terminal wealth : 77.24
+p(wealth=0 at end)  : .876570
+p(ruin by year n)   : .876570
+```

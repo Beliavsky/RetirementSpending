@@ -29,7 +29,8 @@ integer, parameter :: n_dp_wealth_grid   = 200          ! number of wealth grid 
 integer, parameter :: n_dp_withdraw_grid = 50           ! number of withdrawal choices per wealth (action grid size a)
 integer, parameter :: n_dp_shocks        = 500          ! number of return shocks used for dp expectations (k)
 real(kind=dp), parameter :: dp_wealth_max = 4.0_dp*w0   ! max wealth represented on dp grid (values above are capped)
-
+logical, parameter :: print_terminal = .false.
+logical, parameter :: call_pct = .false.
 real(kind=dp), allocatable :: gross(:,:)               ! gross(t,i) = 1 + r, clipped at 0
 
 real(kind=dp) :: w_best, u_best
@@ -106,20 +107,20 @@ call print_opt_block( &
    u_best)    ! eu0: expected utility (objective) from the optimizer
 
 call print_rule_block( &
-   'adaptive_annuity', & ! name: rule label
+   "adaptive annuity", & ! name: rule label
    eu_annuity, &         ! eu: expected utility
    mean_wt_annuity, &    ! mean_wt: mean terminal wealth
    p_end0_annuity, &     ! p_end0: prob(wealth=0 at end)
    p_ever0_annuity)      ! p_ever0: prob(ruin ever)
 
 call print_rule_block( &
-   'bellman_dp', & ! name: rule label
+   "bellman dp", & ! name: rule label
    eu_dp, &        ! eu: expected utility
    mean_wt_dp, &   ! mean_wt: mean terminal wealth
    p_end0_dp, &    ! p_end0: prob(wealth=0 at end)
    p_ever0_dp)     ! p_ever0: prob(ruin ever)
 
-call print_coarse_table()
+if (call_pct) call print_coarse_table()
 
 deallocate(withdraw_dp)
 deallocate(w_coarse, eu_coarse, mean_wt_coarse, p_end0_coarse)
@@ -129,6 +130,7 @@ contains
 
 subroutine print_inputs()
 ! print model and dp settings used in the run
+print "('inputs:')"
 print "('n_years  : ', i0)", n_years
 print "('n_paths  : ', i0)", n_paths
 print "('w0       : ', f0.2)", w0
@@ -136,7 +138,7 @@ print "('pension  : ', f0.2)", pension
 print "('mu       : ', f0.6)", mu
 print "('sigma    : ', f0.6)", sigma
 print "('dp grid  : wealth=', i0, ', withdraw=', i0, ', shocks=', i0)", n_dp_wealth_grid, n_dp_withdraw_grid, n_dp_shocks
-print "('dp wmax  : ', f0.2)", dp_wealth_max
+print "('dp wmax  : ', f0.2, /)", dp_wealth_max
 end subroutine print_inputs
 
 subroutine draw_returns( &
@@ -515,12 +517,16 @@ call eval_w( &
    p_end0, &  ! p_end0: prob(wealth=0 at end)
    p_ever0)   ! p_ever0: prob(ruin ever)
 
-print "('w_opt    : ', f0.2)", w
-print "('w_opt/w0 : ', f0.6)", w / w0
-print "('eu_opt   : ', f0.6)", eu0
-print "('mean terminal wealth : ', f0.2)", mean_wt
-print "('p(wealth=0 at end)  : ', f0.6)", p_end0
-print "('p(ruin by year n)   : ', f0.6)", p_ever0
+print "('results:')"
+print "('rule      : constant spending')"
+print "('w_opt     : ', f0.2)", w
+print "('w_opt/w0  : ', f0.6)", w / w0
+print "('eu_opt    : ', f0.6)", eu0
+if (print_terminal) then
+   print "('mean terminal wealth : ', f0.2)", mean_wt
+   print "('p(wealth=0 at end)  : ', f0.6)", p_end0
+   print "('p(ruin by year n)   : ', f0.6)", p_ever0
+end if
 end subroutine print_opt_block
 
 subroutine print_rule_block( &
@@ -533,12 +539,13 @@ subroutine print_rule_block( &
 character(len=*), intent(in) :: name
 real(kind=dp), intent(in) :: eu, mean_wt, p_end0, p_ever0
 
-print *, '---'
-print "('rule      : ', a)", trim(name)
+print "(/,'rule      : ', a)", trim(name)
 print "('eu        : ', f0.6)", eu
-print "('mean terminal wealth : ', f0.2)", mean_wt
-print "('p(wealth=0 at end)  : ', f0.6)", p_end0
-print "('p(ruin by year n)   : ', f0.6)", p_ever0
+if (print_terminal) then
+   print "('mean terminal wealth : ', f0.2)", mean_wt
+   print "('p(wealth=0 at end)  : ', f0.6)", p_end0
+   print "('p(ruin by year n)   : ', f0.6)", p_ever0
+end if
 end subroutine print_rule_block
 
 subroutine print_coarse_table()

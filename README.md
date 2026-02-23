@@ -39,3 +39,40 @@ Output:
  that the probability of the savings lasting 30 years (column `p30`) is 94.7%. If the annual spending rate is 4%, the 30-year survival probability
  falls to 83.6%. The investor should decide whether spending 33% more per year is worth a higher risk of running out of money. Using
  different return assumptions, Morningstar recommends 3.3% as a safe withdrawal rate.
+
+A second program, compiled with `gfortran kind.f90 constants.f90 random.f90 xspending_utility.f90`, looks at the optimal spending rate to maximize utility given a pension and log utility from consumption. Results are
+```
+n_years  : 30
+n_paths  : 100000
+w0       : 1000000.00
+pension  : 40000.00
+mu       : .060000
+sigma    : .150000
+w_opt    : 61700.00
+w_opt/w0 : .061700
+eu_opt   : 340.978462
+mean terminal wealth : 1086372.63
+p(wealth=0 at end)  : .528560
+p(ruin by year n)   : .528560
+ ---
+ coarse grid table:
+w/w0        eu            mean_terminal_wealth     p(wealth=0 at end)
+  0.000000   317.899042           5750150.55         0.000000
+  0.010000   324.593314           4912691.54         0.000080
+  0.020000   330.051741           4075946.68         0.006370
+  0.030000   334.537913           3248618.80         0.048290
+  0.040000   337.970108           2459301.87         0.152350
+  0.050000   340.138186           1752782.05         0.313240
+  0.060000   340.961972           1171009.75         0.497630
+  0.070000   340.637581            733113.55         0.666390
+  0.080000   339.556105            429206.71         0.793710
+  0.090000   338.097728            234757.69         0.883090
+  0.100000   336.547079            120459.92         0.939040
+  0.110000   335.089376             58099.06         0.969930
+  0.120000   333.808004             26086.01         0.986400
+  0.130000   332.713070             10998.80         0.994210
+  0.140000   331.792868              4491.18         0.997590
+  0.150000   331.018658              1654.03         0.999060
+```
+To maximize utility a spending rate of 6.17% of initial wealth is recommended.
+

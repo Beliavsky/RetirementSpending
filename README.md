@@ -80,6 +80,7 @@ To maximize utility a spending rate of 6.17% of initial wealth is recommended.
 ## Spending rule using the Bellman equation
 Compiling with `gfortran kind.f90 constants.f90 random.f90 xbellman.f90` and running gives
 ```
+inputs:
 n_years  : 30
 n_paths  : 100000
 w0       : 1000000.00
@@ -88,23 +89,17 @@ mu       : .060000
 sigma    : .150000
 dp grid  : wealth=200, withdraw=50, shocks=500
 dp wmax  : 4000000.00
-w_opt    : 51500.00
-w_opt/w0 : .051500
-eu_opt   : 327.667646
-mean terminal wealth : .00
-p(wealth=0 at end)  : 1.000000
-p(ruin by year n)   : 1.000000
- ---
-rule      : adaptive_annuity
+
+results:
+rule      : constant spending
+w_opt     : 51500.00
+w_opt/w0  : .051500
+eu_opt    : 327.667646
+
+rule      : adaptive annuity
 eu        : 334.920566
-mean terminal wealth : .00
-p(wealth=0 at end)  : 1.000000
-p(ruin by year n)   : 1.000000
- ---
-rule      : bellman_dp
+
+rule      : bellman dp
 eu        : 338.137533
-mean terminal wealth : .00
-p(wealth=0 at end)  : 1.000000
-p(ruin by year n)   : 1.000000
 ```
 The Bellman dynamic programming approach yields higher utility than the adaptive annuity one, which outperforms the constant spending rule.
